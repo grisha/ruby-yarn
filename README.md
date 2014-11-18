@@ -13,7 +13,7 @@ either.
 
 Add this line to your application's Gemfile (until I actually publish this):
 
-    gem 'ruby-yarn', :git => https://github.com/grisha/ruby-yarn.git
+    gem 'ruby-yarn', :git => 'https://github.com/grisha/ruby-yarn.git'
 
 ## Usage
 

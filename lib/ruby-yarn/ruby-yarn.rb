@@ -69,7 +69,7 @@ module RubyYarn
               # http://stackoverflow.com/questions/18251454/access-nested-hash-element-specified-by-an-array-of-keys
               subset = key.nil? ? j : [key].flatten.inject(j, :fetch)
             rescue NoMethodError => e
-              return [] if e.message =~ /nil:NilClass/ # node/apps can return nil?
+              return [] if e.message =~ /nil:NilClass|nil object/ # node/apps can return nil
               raise
             rescue KeyError => e
               return [] # it's not always there for some things
