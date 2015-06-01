@@ -37,16 +37,60 @@ module RubyYarn
 
   class YarnRestApiClient
     attr_reader :base_url
+    attr_reader :connections
 
-    def initialize(base_url)
-      @base_url = base_url
+    def initialize(base_urls)
+      @connections = base_urls.split(",")
+      if @connections.length == 1 
+        @base_url = @connections[0]
+
+        ### assume connected when only one server given
+        @connected = true
+      else
+        @base_url = nil
+      end
     end
+
+    def connected?
+      @connected || false
+    end
+
+    def base_url
+      connect! unless connected?
+      @base_url 
+    end
+    
+    def connect!
+      return if connected?
+   
+      zz = @connections.map do |cx|
+        begin
+          RestClient.get(cx + "/cluster", accept: :json) do |response,request,result| 
+            # raises exception if response is not 200-206. Also follows redirects
+            response.return!
+            raise StandbyRM unless response.headers[:refresh].nil? 
+          end
+
+          cx
+        rescue StandbyRM, Errno::ECONNREFUSED, RestClient::Exception
+          nil
+        end
+      end
+
+      ### should only be one after compact, but just in case...
+      @base_url = zz.compact.sample
+
+      raise Errno::ECONNREFUSED if @base_url.nil? || @base_url.empty?
+      @connected = true
+    end
+
 
     class StandbyRM < Exception
     end
 
     def get(url, klass, key=nil)
       retried = false
+      connect! unless connected?
       begin
         RestClient.get(url, :accept=>:json) do |response, request, result, &blk|
           if response.headers[:refresh]
