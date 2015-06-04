@@ -37,33 +37,33 @@ module RubyYarn
 
   class YarnRestApiClient
     attr_reader :base_url
-    attr_reader :connections
+    attr_reader :resource_managers
 
     def initialize(base_urls)
-      @connections = base_urls.split(",")
-      if @connections.length == 1 
-        @base_url = @connections[0]
+      @resource_managers = base_urls.split(",")
+      if @resource_managers.length == 1 
+        @base_url = @resource_managers[0]
 
-        ### assume connected when only one server given
-        @connected = true
+        ### assume rm_alive when only one server given
+        @rm_alive = true
       else
         @base_url = nil
       end
     end
 
-    def connected?
-      @connected || false
+    def rm_alive?
+      @rm_alive || false
     end
 
     def base_url
-      connect! unless connected?
+      attach_to_rm! unless rm_alive?
       @base_url 
     end
     
-    def connect!
-      return if connected?
+    def attach_to_rm!
+      return if rm_alive?
    
-      zz = @connections.map do |cx|
+      zz = @resource_managers.map do |cx|
         begin
           RestClient.get(cx + "/cluster", accept: :json) do |response,request,result| 
             # raises exception if response is not 200-206. Also follows redirects
@@ -81,7 +81,7 @@ module RubyYarn
       @base_url = zz.compact.sample
 
       raise Errno::ECONNREFUSED if @base_url.nil? || @base_url.empty?
-      @connected = true
+      @rm_alive = true
     end
 
 
@@ -90,7 +90,7 @@ module RubyYarn
 
     def get(url, klass, key=nil)
       retried = false
-      connect! unless connected?
+      attach_to_rm! unless rm_alive?
       begin
         RestClient.get(url, :accept=>:json) do |response, request, result, &blk|
           if response.headers[:refresh]
